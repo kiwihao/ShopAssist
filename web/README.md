@@ -1,0 +1,49 @@
+# ShopAssist 商品问答与条件推荐
+
+React + TypeScript + Vite，图标使用 lucide-react。包版本和 lockfile 均已固定。背包为本项目绘制的 SVG 演示插画，不依赖远程图片或字体服务。
+
+## 启动
+
+先启动数据库、Ollama 和 IDEA 中的 Java 服务，确保后端在 8081 可用。终端执行：
+
+```powershell
+Set-Location D:\study\codex\program_two\web
+npm ci
+npm run dev
+```
+
+打开 http://127.0.0.1:5173 。Node 需要 20.19+ 或 22.12+，本机验证版本为 22.20.0。
+
+如果后端运行在其他端口，复制本目录 `.env.example` 为 `.env`，修改 SHOPASSIST_API_TARGET，重新启动前端。该变量供 Vite 进程配置代理，未注入浏览器；不要在 web/ 配置模型 Key。
+
+## 构建与本地预览
+
+```powershell
+npm run build
+npm run preview
+```
+
+构建包含 TypeScript 严格类型检查，输出 dist/；本地预览地址为 http://127.0.0.1:4173 ，同样代理到 Java。Vite 开发/预览默认只监听本机，不是生产托管服务器。
+
+正式部署静态文件时还需要 Web 服务器将 `/api` 反向代理到 Java，本轮没有添加前端 Docker 镜像或完成完整容器部署。
+
+## 代码阅读顺序
+
+- src/types.ts：商品、回答、引用和请求状态。
+- src/api.ts：仅调用 Java 商品与问答接口，处理超时、错误和返回格式。
+- src/App.tsx：按商品保存当前页面问答，处理发送、防重复、失败重试和商品切换。
+- src/components/SourcePanel.tsx：引用展开、文档版本与行号、手机抽屉和键盘焦点管理。
+- src/components/RecommendationPanel.tsx：自然语言识别、人工核对条件、结构化筛选、候选商品和原文入口。
+- src/components/Backpack.tsx：虚拟商品 SVG 插画。
+- src/styles.css：桌面三栏、平板抽屉与手机布局。
+- vite.config.ts：开发与预览的 `/api` 代理。
+
+## 已实现范围
+
+选择商品、快捷提问、输入提问、等待状态、回答/追问/资料不足、引用原文、错误重试、复制回答、清空本商品记录、桌面与手机适配。历史按商品隔开，正在进行的请求按发起时的商品 ID 回填。
+
+增加“帮我选商品”：可直接填写预算/电脑尺寸/机洗条件，也可先识别自然语言后核对。候选商品可核对原文或转入商品问答；不会自动放宽硬条件，未覆盖要求会明确说明。
+
+这些记录只在页面内存中，刷新即清除；仅发送当前问题，不将历史提交给模型。因此没有实现后端多轮记忆、用户隔离、工单和管理员入库页面。没有示例回答回退，接口失败会显示失败。推荐设计与验收见 ../docs/13-条件推荐与验收.md。
+
+实际浏览器验收见 ../docs/12-商品问答页面验收.md。

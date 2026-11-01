@@ -1,0 +1,64 @@
+name: ecommerce-rag-demo
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.2-pg17
+    environment:
+      POSTGRES_DB: ecommerce_rag
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local_demo_only}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d ecommerce_rag"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  ollama:
+    image: ollama/ollama:0.13.5
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  model-init:
+    image: ollama/ollama:0.13.5
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ['ollama show "$$OLLAMA_EMBEDDING_MODEL" >/dev/null 2>&1 || ollama pull "$$OLLAMA_EMBEDDING_MODEL"']
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-bge-m3:567m}
+    depends_on:
+      ollama:
+        condition: service_healthy
+  backend:
+    profiles: ["app"]
+    build: ./server
+    ports:
+      - "127.0.0.1:${APP_PORT:-8081}:8081"
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce_rag?connectTimeout=3&socketTimeout=3
+      DB_USER: demo
+      DB_PASSWORD: ${DB_PASSWORD:-local_demo_only}
+      EMBEDDING_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-bge-m3:567m}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      model-init:
+        condition: service_completed_successfully
+volumes:
+  postgres_data:
+  ollama_data:

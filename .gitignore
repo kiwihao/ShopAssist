@@ -1,0 +1,22 @@
+.env
+.env.*
+!.env.example
+**/target/
+.idea/
+*.iml
+.runtime/
+evaluation/results/
+**/__pycache__/
+.venv/
+web/node_modules/
+web/dist/
+# Personal materials are kept locally, outside the public project.
+output/
+第二项目执行计划.md
+每日学习计划.md
+电商智能助手-亮点与面试准备.md
+电商智能助手-项目设计文档.md
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db

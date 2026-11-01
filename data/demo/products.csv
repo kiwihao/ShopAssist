@@ -1,0 +1,3 @@
+product_id,name,category,price_cny,laptop_height_cm,laptop_width_cm,laptop_depth_cm,status,document_file,document_version,machine_washable
+BP-A,轻行通勤包,背包,189.00,36,25,3,ACTIVE,documents/BP-A-v1.md,1,false
+BP-B,简装轻便包,背包,129.00,32,23,2,ACTIVE,documents/BP-B-v1.md,1,false
