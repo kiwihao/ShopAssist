@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowRight, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, CircleAlert, Copy, FileText, HelpCircle, Leaf, LoaderCircle, MessageSquareText, Package, PanelRight, Plus, RefreshCw, ShieldCheck, ShoppingBag, Sparkles, X } from 'lucide-react'
+import { ArrowDown, ArrowRight, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, CircleAlert, ClipboardList, Copy, FileText, HelpCircle, Leaf, LoaderCircle, MessageSquareText, Package, PanelRight, Plus, RefreshCw, ShieldCheck, ShoppingBag, Sparkles, X } from 'lucide-react'
 import { ApiError, askAgent, askProduct, getProducts } from './api'
 import Backpack from './components/Backpack'
 import SourcePanel from './components/SourcePanel'
 import RecommendationPanel from './components/RecommendationPanel'
 import TicketDraftCard from './components/TicketDraftCard'
+import SupportPanel from './components/SupportPanel'
 import type { AgentResult, Answer, Product, RecommendationCriteria, Turn } from './types'
 
 const suggestions = [
@@ -43,7 +44,7 @@ function CopyButton({ text }: { text: string }) {
 export default function App() {
   const [autoAgent, setAutoAgent] = useState(false)
   const [recommendationSeed, setRecommendationSeed] = useState<{message:string;criteria:RecommendationCriteria;id:string} | undefined>(undefined)
-  const [mode, setMode] = useState<'qa' | 'recommend'>('qa')
+  const [mode, setMode] = useState<'qa' | 'recommend' | 'support'>('qa')
   const [recommendationAnswer, setRecommendationAnswer] = useState<Answer | undefined>(undefined)
   const [recommendationSource, setRecommendationSource] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -140,16 +141,16 @@ export default function App() {
   }
 
   return <div className="app-shell">
-    <a className="skip-link" href={mode === 'qa' ? '#question-input' : '#recommend-form'}>跳到输入区域</a>
+    <a className="skip-link" href={mode === 'qa' ? '#question-input' : mode === 'support' ? '#support-summary' : '#recommend-form'}>跳到输入区域</a>
     <header className="topbar">
       <a className="brand" href="/" aria-label="ShopAssist 首页"><BrandMark /><span>ShopAssist<span className="brand-period">.</span></span></a>
-      <div className="topbar-center"><span className="workspace-label">电商智能助手</span><ChevronRight size={14} /><span>{mode === 'qa' ? '商品问答' : '帮我选商品'}</span></div>
+      <div className="topbar-center"><span className="workspace-label">电商智能助手</span><ChevronRight size={14} /><span>{mode === 'qa' ? '商品问答' : mode === 'support' ? '售后服务' : '帮我选商品'}</span></div>
       <div className="topbar-actions"><span className={`connection-badge ${productsError ? 'offline' : ''}`}><span />{loadingProducts ? '连接中' : productsError ? '后端未连接' : '后端已连接'}</span><span className="demo-label">演示空间</span><button className="icon-button help-button" aria-label="查看使用说明" onClick={() => setShowHelp(true)}><HelpCircle size={20} /></button></div>
     </header>
 
-    <aside className={`catalog-sidebar ${mode==='recommend'?'browsing-catalog':''}`} aria-label="商品选择">
+    <aside className={`catalog-sidebar ${mode!=='qa'?'browsing-catalog':''} ${mode==='support'?'support-catalog':''}`} aria-label="商品选择">
       <div className="workspace-selector"><span className="store-icon"><ShoppingBag size={18} /></span><div><strong>轻行生活</strong><span>虚拟演示店铺</span></div><span className="store-badge">Demo</span></div>
-      <nav className="workspace-nav" aria-label="功能"><button className={`workspace-nav-button ${mode === 'qa' ? 'active-nav' : ''}`} aria-current={mode === 'qa' ? 'page' : undefined} onClick={() => { setMode('qa'); setMobileSources(false) }}><MessageSquareText size={18} /><span>商品问答</span>{mode === 'qa' && <span className="nav-dot" />}</button><button className={`workspace-nav-button ${mode === 'recommend' ? 'active-nav' : ''}`} aria-current={mode === 'recommend' ? 'page' : undefined} onClick={() => { setMode('recommend'); setMobileSources(false) }}><Sparkles size={18} /><span>帮我选商品</span>{mode === 'recommend' && <span className="nav-dot" />}</button></nav>
+      <nav className="workspace-nav" aria-label="功能"><button className={`workspace-nav-button ${mode === 'qa' ? 'active-nav' : ''}`} aria-current={mode === 'qa' ? 'page' : undefined} onClick={() => { setMode('qa'); setMobileSources(false) }}><MessageSquareText size={18} /><span>商品问答</span>{mode === 'qa' && <span className="nav-dot" />}</button><button className={`workspace-nav-button ${mode === 'recommend' ? 'active-nav' : ''}`} aria-current={mode === 'recommend' ? 'page' : undefined} onClick={() => { setMode('recommend'); setMobileSources(false) }}><Sparkles size={18} /><span>帮我选商品</span>{mode === 'recommend' && <span className="nav-dot" />}</button><button className={`workspace-nav-button ${mode === 'support' ? 'active-nav' : ''}`} aria-current={mode === 'support' ? 'page' : undefined} onClick={() => { setMode('support'); setMobileSources(false) }}><ClipboardList size={18} /><span>售后服务</span>{mode === 'support' && <span className="nav-dot" />}</button></nav>
       <div className="catalog-heading"><h2>{mode==='recommend'?'演示商品目录':'选择咨询商品'}</h2><span>{products.length.toString().padStart(2, '0')}</span></div>
       <div className="product-list">
         {loadingProducts ? <div className="catalog-loading"><LoaderCircle className="spin" size={18} />正在加载商品</div> : productsError ? <div className="catalog-error"><CircleAlert size={20} /><p>商品加载失败</p><button className="text-action" onClick={() => setReload(n => n + 1)}><RefreshCw size={14} />重新加载</button></div> : products.length === 0 ? <p className="empty-catalog">暂无可咨询商品，请先添加商品资料。</p> : products.map(item => <button key={item.product_id} className={`product-card ${item.product_id === selectedId ? 'selected' : ''}`} aria-pressed={item.product_id === selectedId} onClick={() => { setMode('qa'); setSelectedId(item.product_id); setMobileSources(false) }}>
@@ -204,11 +205,12 @@ export default function App() {
       setRecommendationAnswer({ productId: candidate.product.product_id, requestId, status: candidate.citations.length ? 'ANSWER' : 'INSUFFICIENT', answer: candidate.reasons.join('\n'), citations: candidate.citations })
       setRecommendationSource(candidate.citations[0]?.sourceId ?? null); setMobileSources(true)
     }} />
-    <SourcePanel product={mode === 'qa' ? product : products.find(item => item.product_id === recommendationAnswer?.productId)} answer={mode === 'qa' ? activeAnswer : recommendationAnswer} activeSource={mode === 'qa' ? activeSource : recommendationSource} onSource={sourceId => {
+    <SupportPanel active={mode === 'support'} products={products} selectedId={selectedId} />
+    {mode !== 'support' && <SourcePanel product={mode === 'qa' ? product : products.find(item => item.product_id === recommendationAnswer?.productId)} answer={mode === 'qa' ? activeAnswer : recommendationAnswer} activeSource={mode === 'qa' ? activeSource : recommendationSource} onSource={sourceId => {
       if (mode === 'recommend') { setRecommendationSource(previous => previous === sourceId ? null : sourceId); return }
       const turnId = selectedSource?.turnId ?? turns.findLast(turn => turn.state === 'complete')?.id
       if (turnId) setSourceSelections(previous => ({ ...previous, [selectedId]: { turnId, sourceId: activeSource === sourceId ? '' : sourceId } }))
-    }} mobileOpen={mobileSources} onClose={() => setMobileSources(false)} />
+    }} mobileOpen={mobileSources} onClose={() => setMobileSources(false)} />}
     {showHelp && <HelpDialog onClose={() => setShowHelp(false)} />}
   </div>
 }

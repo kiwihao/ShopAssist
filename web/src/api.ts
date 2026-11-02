@@ -79,6 +79,9 @@ export async function askAgent(productId: string, message: string, signal: Abort
   return data
 }
 
+export async function prepareTicketDraft(productId: string, summary: string): Promise<TicketDraft> {
+  return await request('/api/ticket-drafts', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({productId,summary})}) as TicketDraft
+}
 export async function editTicketDraft(draft: TicketDraft, summary: string): Promise<TicketDraft> {
   return await request(`/api/ticket-drafts/${draft.draft_id}`, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:draft.version,confirmationToken:draft.confirmationToken,summary})}) as TicketDraft
 }
