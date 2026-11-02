@@ -19,3 +19,9 @@ python .\evaluation\review_handwash.py
 ```
 
 脚本向 `/api/qa` 提交两道手洗问题，调用真实 DeepSeek，可能产生费用。回答、引用及核对提示保存在 `.runtime/handwash-review.json`；`PENDING` 表示尚待人工检查，脚本成功只代表接口调用完成，不代表答案正确。请同时对照 `data/demo/documents/` 的原文，检查事实、引用和是否把未明确说明的事项说成确定结论。
+
+## 新评测集样例（待复核）
+
+`draft_cases_sample.jsonl` 是 5 道标注规则示例，AI 整理，待用户复核，并非正式评测集。每行一道题：`expected_type` 为可回答、资料不足或需追问；`expected_facts` 为人工核对要点；`evidence` 为对应版本的原文行号和摘录。多条证据可能来自同一检索片段，不能当成多个片段数。行号按 Markdown 文件从 1 开始计，区间包含首尾；引用检查只验证摘录出现在标注行，并不证明语义标注正确。
+
+样例不上传知识库，不属于保留集；要调整字段、标注规则或原文版本时先复核，再扩展开发题和独立保留题。
