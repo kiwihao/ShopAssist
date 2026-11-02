@@ -140,17 +140,17 @@ export default function App() {
   }
 
   return <div className="app-shell">
-    <a className="skip-link" href={mode === 'qa' ? '#question-input' : '#requirement-description'}>跳到提问框</a>
+    <a className="skip-link" href={mode === 'qa' ? '#question-input' : '#recommend-form'}>跳到输入区域</a>
     <header className="topbar">
       <a className="brand" href="/" aria-label="ShopAssist 首页"><BrandMark /><span>ShopAssist<span className="brand-period">.</span></span></a>
       <div className="topbar-center"><span className="workspace-label">电商智能助手</span><ChevronRight size={14} /><span>{mode === 'qa' ? '商品问答' : '帮我选商品'}</span></div>
       <div className="topbar-actions"><span className={`connection-badge ${productsError ? 'offline' : ''}`}><span />{loadingProducts ? '连接中' : productsError ? '后端未连接' : '后端已连接'}</span><span className="demo-label">演示空间</span><button className="icon-button help-button" aria-label="查看使用说明" onClick={() => setShowHelp(true)}><HelpCircle size={20} /></button></div>
     </header>
 
-    <aside className="catalog-sidebar" aria-label="商品选择">
+    <aside className={`catalog-sidebar ${mode==='recommend'?'browsing-catalog':''}`} aria-label="商品选择">
       <div className="workspace-selector"><span className="store-icon"><ShoppingBag size={18} /></span><div><strong>轻行生活</strong><span>虚拟演示店铺</span></div><span className="store-badge">Demo</span></div>
       <nav className="workspace-nav" aria-label="功能"><button className={`workspace-nav-button ${mode === 'qa' ? 'active-nav' : ''}`} aria-current={mode === 'qa' ? 'page' : undefined} onClick={() => { setMode('qa'); setMobileSources(false) }}><MessageSquareText size={18} /><span>商品问答</span>{mode === 'qa' && <span className="nav-dot" />}</button><button className={`workspace-nav-button ${mode === 'recommend' ? 'active-nav' : ''}`} aria-current={mode === 'recommend' ? 'page' : undefined} onClick={() => { setMode('recommend'); setMobileSources(false) }}><Sparkles size={18} /><span>帮我选商品</span>{mode === 'recommend' && <span className="nav-dot" />}</button></nav>
-      <div className="catalog-heading"><h2>选择咨询商品</h2><span>{products.length.toString().padStart(2, '0')}</span></div>
+      <div className="catalog-heading"><h2>{mode==='recommend'?'演示商品目录':'选择咨询商品'}</h2><span>{products.length.toString().padStart(2, '0')}</span></div>
       <div className="product-list">
         {loadingProducts ? <div className="catalog-loading"><LoaderCircle className="spin" size={18} />正在加载商品</div> : productsError ? <div className="catalog-error"><CircleAlert size={20} /><p>商品加载失败</p><button className="text-action" onClick={() => setReload(n => n + 1)}><RefreshCw size={14} />重新加载</button></div> : products.length === 0 ? <p className="empty-catalog">暂无可咨询商品，请先添加商品资料。</p> : products.map(item => <button key={item.product_id} className={`product-card ${item.product_id === selectedId ? 'selected' : ''}`} aria-pressed={item.product_id === selectedId} onClick={() => { setMode('qa'); setSelectedId(item.product_id); setMobileSources(false) }}>
           <span className={`product-art ${item.product_id === 'BP-B' ? 'sand' : ''}`}><Backpack variant={item.product_id} /></span>
@@ -168,7 +168,8 @@ export default function App() {
       <div className="conversation-scroll" ref={scroll} onScroll={() => { const el = scroll.current; if (el) setShowJump(el.scrollHeight - el.scrollTop - el.clientHeight > 240) }}>
         {!turns.length ? <div className="welcome">
           <div className="welcome-hero"><div className="welcome-copy"><span className="welcome-kicker"><Sparkles size={15} />你的商品咨询助手</span><h2>关于这只包，<br />你想了解什么？</h2><p>尺寸、收纳，或是清洁方式。<br />选一个问题，让我们一起翻翻商品说明。</p></div><div className="hero-art"><span className="orbit orbit-one" /><span className="orbit orbit-two" /><Backpack variant={selectedId} /><span className="hero-art-label"><span className="tiny-dot" />{product?.name ?? '商品说明'}</span></div></div>
-          <div className="suggestions-heading"><span>从一个小问题开始</span><span>也可以直接输入</span></div>
+          <button className="recommend-entry" onClick={()=>{setMode('recommend');setMobileSources(false)}}><Sparkles size={18}/><span><strong>还没选好？点选条件帮你挑</strong><small>选预算、选需求，不用反复打字</small></span><ArrowRight size={18}/></button>
+          <div className="suggestions-heading"><span>也可以问问这款商品</span><span>支持直接输入</span></div>
           <div className="suggestion-list">{suggestions.map(({ icon: Icon, title, detail, question }) => <button key={title} className="suggestion" onClick={() => void send(question)} disabled={!product || busy}><span className="suggestion-icon"><Icon size={19} strokeWidth={1.6} /></span><span><strong>{title}</strong><small>{detail}</small></span><ArrowRight size={17} /></button>)}</div>
           <div className="welcome-promise"><FileText size={15} /><span>回答附原文引用</span><span className="promise-separator" /><CircleAlert size={15} /><span>资料未写，如实说明</span></div>
         </div> : <div className="conversation" aria-live="polite" aria-relevant="additions text">
