@@ -134,6 +134,7 @@ evaluation/   Python 固定题检索检查（初步基线）
 - [咨询工单确认与幂等验收](docs/15-咨询工单确认与幂等验收.md)
 - [推荐点选交互验收](docs/16-推荐点选交互验收.md)
 - [Python 检索检查](evaluation/README.md)
+- [商品问答人工核对记录](docs/17-问答人工核对记录.md)
 
 ## 当前边界
 
