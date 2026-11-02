@@ -135,6 +135,7 @@ evaluation/   Python 固定题检索检查（初步基线）
 - [推荐点选交互验收](docs/16-推荐点选交互验收.md)
 - [Python 检索检查](evaluation/README.md)
 - [商品问答人工核对记录](docs/17-问答人工核对记录.md)
+- [手洗差异核对](docs/18-手洗差异核对.md)
 
 ## 当前边界
 

@@ -11,3 +11,11 @@ python .\evaluation\evaluate_retrieval.py
 脚本使用 Python 标准库，无需安装依赖，也不调用付费聊天模型。运行后逐题输出结果，并把完整请求和检索结果写入 `.runtime/evaluation-retrieval.json`（本地文件，不提交仓库）。调用失败单独标记 ERROR，不算作检索未命中；出现失败或错误时进程返回非零状态。
 
 通过率是目标标题命中且没有跨商品片段的题数除以成功调用题数；不是通用 Recall@K。题目很少，只用于建立可重复的初步基线。人工查看片段才能判断内容是否真的足够支持回答。后续再增加多证据标注、Badcase 分析与方案对比。
+
+## 手洗差异人工核对
+
+```powershell
+python .\evaluation\review_handwash.py
+```
+
+脚本向 `/api/qa` 提交两道手洗问题，调用真实 DeepSeek，可能产生费用。回答、引用及核对提示保存在 `.runtime/handwash-review.json`；`PENDING` 表示尚待人工检查，脚本成功只代表接口调用完成，不代表答案正确。请同时对照 `data/demo/documents/` 的原文，检查事实、引用和是否把未明确说明的事项说成确定结论。
