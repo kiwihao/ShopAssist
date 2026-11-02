@@ -137,6 +137,7 @@ evaluation/   Python 固定题检索检查（初步基线）
 - [Python 检索检查](evaluation/README.md)
 - [商品问答人工核对记录](docs/17-问答人工核对记录.md)
 - [手洗差异核对](docs/18-手洗差异核对.md)
+- [RAG 评测与优化方案（待确认）](docs/19-RAG评测与优化方案.md)
 
 ## 当前边界
 
