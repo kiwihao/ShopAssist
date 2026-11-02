@@ -1,4 +1,4 @@
-import type { Answer, Product, RecommendationCriteria, RecommendationResult } from './types'
+import type { AgentResult, Answer, Product, RecommendationCriteria, RecommendationResult } from './types'
 
 export class ApiError extends Error {
   code?: string
@@ -69,5 +69,12 @@ export async function recommendProducts(criteria: RecommendationCriteria, signal
       && Array.isArray(c.reasons) && Array.isArray(c.citations) && c.citations.every(s => s.product_id === c.product.product_id && typeof s.content === 'string'))) {
     throw new ApiError('推荐结果格式异常，请重试。', 'INVALID_RECOMMENDATION')
   }
+  return data
+}
+
+export async function askAgent(productId: string, message: string, signal: AbortSignal): Promise<AgentResult> {
+  const data = await request('/api/agent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId, message }), signal }, 210_000) as AgentResult
+  if (typeof data.message !== 'string' || !Array.isArray(data.trace)) throw new ApiError('客服编排结果格式异常。', 'INVALID_AGENT_RESPONSE')
+  if (data.status === 'TOOL_ERROR' || data.status === 'LIMIT_REACHED') throw new ApiError(data.message, data.errorCode || data.status, data.requestId)
   return data
 }

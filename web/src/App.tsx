@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowRight, ArrowUp, BookOpen, Check, ChevronDown, ChevronRight, CircleAlert, Copy, FileText, HelpCircle, Leaf, LoaderCircle, MessageSquareText, Package, PanelRight, Plus, RefreshCw, ShieldCheck, ShoppingBag, Sparkles, X } from 'lucide-react'
-import { ApiError, askProduct, getProducts } from './api'
+import { ApiError, askAgent, askProduct, getProducts } from './api'
 import Backpack from './components/Backpack'
 import SourcePanel from './components/SourcePanel'
 import RecommendationPanel from './components/RecommendationPanel'
-import type { Answer, Product, Turn } from './types'
+import type { Answer, Product, RecommendationCriteria, Turn } from './types'
 
 const suggestions = [
   { icon: Package, title: '电脑能放下吗？', detail: '先了解电脑仓尺寸', question: '这款背包的电脑仓尺寸是多少？' },
@@ -40,6 +40,8 @@ function CopyButton({ text }: { text: string }) {
 }
 
 export default function App() {
+  const [autoAgent, setAutoAgent] = useState(false)
+  const [recommendationSeed, setRecommendationSeed] = useState<{message:string;criteria:RecommendationCriteria;id:string} | undefined>(undefined)
   const [mode, setMode] = useState<'qa' | 'recommend'>('qa')
   const [recommendationAnswer, setRecommendationAnswer] = useState<Answer | undefined>(undefined)
   const [recommendationSource, setRecommendationSource] = useState<string | null>(null)
@@ -108,8 +110,9 @@ export default function App() {
     setDrafts(previous => ({ ...previous, [productId]: '' }))
     requestAnimationFrame(() => jumpToBottom())
     try {
-      const answer = await askProduct(productId, text, controller.signal)
-      setHistories(previous => ({ ...previous, [productId]: previous[productId].map(turn => turn.id === id ? { ...turn, state: 'complete', answer } : turn) }))
+      const agent = autoAgent ? await askAgent(productId,text,controller.signal) : undefined
+      const answer: Answer = agent ? agent.qa ?? { productId, requestId:agent.requestId, status:agent.status==='INSUFFICIENT'?'INSUFFICIENT':'NEED_INFO', answer:agent.message, citations:[] } : await askProduct(productId, text, controller.signal)
+      setHistories(previous => ({ ...previous, [productId]: previous[productId].map(turn => turn.id === id ? { ...turn, state: 'complete', answer, agent } : turn) }))
       setSourceSelections(previous => ({ ...previous, [productId]: { turnId: id, sourceId: answer.citations[0]?.sourceId ?? null } }))
     } catch (error) {
       if (controller.signal.aborted) return
@@ -156,7 +159,7 @@ export default function App() {
 
     <main className="chat-panel" aria-label="商品问答" hidden={mode !== 'qa'}>
       <div className="chat-heading"><div><h1>商品问答<span className="heading-tag">有据可查</span></h1><p>关于商品的每个疑问，从资料里找答案。</p></div><div className="chat-heading-actions"><button className="icon-button source-mobile-trigger" aria-label="查看回答依据" onClick={() => setMobileSources(true)}><PanelRight size={19} /></button><button className="new-question-button" onClick={clearHistory} disabled={busy || !turns.length}><Plus size={16} /><span>清空问答</span></button></div></div>
-      <div className="selected-product-bar"><span><span className="tiny-dot" />正在咨询 <strong>{product?.name ?? (loadingProducts ? '加载中…' : '请选择商品')}</strong></span><span className="product-id">{selectedId || '—'}</span></div>
+      <div className="selected-product-bar"><span><span className="tiny-dot" />正在咨询 <strong>{product?.name ?? (loadingProducts ? '加载中…' : '请选择商品')}</strong></span><label className="agent-toggle"><input type="checkbox" checked={autoAgent} disabled={busy} onChange={e=>setAutoAgent(e.target.checked)} />客服自动选工具</label></div>
 
       <div className="conversation-scroll" ref={scroll} onScroll={() => { const el = scroll.current; if (el) setShowJump(el.scrollHeight - el.scrollTop - el.clientHeight > 240) }}>
         {!turns.length ? <div className="welcome">
@@ -170,8 +173,10 @@ export default function App() {
             <div className="user-message"><span className="user-bubble">{turn.question}</span><span className="user-avatar">我</span></div>
             <div className="assistant-message"><BrandMark small /><div className="assistant-content"><div className="assistant-name">ShopAssist<span>商品助手</span></div>
               {turn.state === 'pending' ? <div className="thinking" role="status"><span className="thinking-dots"><i /><i /><i /></span>正在查阅商品资料并整理回答…</div> : turn.state === 'error' ? <div className="answer-error" role="alert"><CircleAlert size={19} /><div><strong>这次没能获取回答</strong><p>{turn.error?.message}</p><div className="error-details">{turn.error?.code}{turn.error?.requestId && <span>请求编号：{turn.error.requestId}</span>}</div><button className="text-action" disabled={busy} onClick={() => void send(turn.question, turn.id)}><RefreshCw size={14} />重新获取回答</button></div></div> : turn.answer && <>
-                <span className={`answer-status ${turn.answer.status.toLowerCase()}`}>{turn.answer.status === 'ANSWER' ? <BookOpen size={13} /> : <CircleAlert size={13} />}{turn.answer.status === 'ANSWER' ? '来自商品资料' : turn.answer.status === 'NEED_INFO' ? '需要补充信息' : '资料暂未说明'}</span>
+                <span className={`answer-status ${turn.answer.status.toLowerCase()}`}>{turn.answer.status === 'ANSWER' ? <BookOpen size={13} /> : <CircleAlert size={13} />}{turn.agent?.status === 'NEED_CONFIRMATION' ? '待核对推荐条件' : turn.agent?.status === 'UNSUPPORTED' ? '当前能力范围' : turn.answer.status === 'ANSWER' ? '来自商品资料' : turn.answer.status === 'NEED_INFO' ? '需要补充信息' : '资料暂未说明'}</span>
                 <p className="answer-text">{turn.answer.answer}</p>
+                {turn.agent && <div className="agent-record"><span>工具调用 {turn.agent.toolCalls}/{turn.agent.maxToolCalls}</span>{turn.agent.trace.map(step=><span key={step.callId}>{step.tool==='query_product_knowledge'?'商品知识问答':step.tool==='prepare_recommendation'?'准备推荐条件':step.tool} · {step.outcome} · {step.elapsedMs} ms</span>)}</div>}
+                {turn.agent?.criteria && <button className="outline-button agent-review" disabled={busy} onClick={()=>{ setRecommendationSeed({message:turn.question,criteria:turn.agent!.criteria!,id:crypto.randomUUID()});setMode('recommend');setMobileSources(false) }}>核对推荐条件<ArrowRight size={14} /></button>}
                 {turn.answer.citations.length > 0 && <div className="citation-row"><span>查看依据</span>{turn.answer.citations.map(source => <button key={source.sourceId} className={`citation-chip ${selectedSource?.turnId === turn.id && activeSource === source.sourceId ? 'active' : ''}`} onClick={() => selectCitation(turn.id, source.sourceId)}><FileText size={13} /><span>{source.heading.split(' / ').at(-1)}</span><span className="citation-id">{source.sourceId}</span><ChevronRight size={12} /></button>)}</div>}
                 <div className="answer-actions"><CopyButton text={turn.answer.answer} /><span className="request-id" title={turn.answer.requestId}>请求 {turn.answer.requestId.slice(0, 8)}</span></div>
               </>}
@@ -189,7 +194,7 @@ export default function App() {
         <div id="composer-note" className="composer-note"><span>{length > 1000 ? '问题最多 1000 字，请精简后发送。' : '每次独立回答，请在问题中补全条件；重要信息请核对原文。'}</span><span>Shift + Enter 换行</span></div>
       </div>
     </main>
-    <RecommendationPanel active={mode === 'recommend'} onConsult={productId => { setSelectedId(productId); setMode('qa'); setMobileSources(false) }} onResetSources={() => { setRecommendationAnswer(undefined); setRecommendationSource(null) }} onSources={(candidate, requestId) => {
+    <RecommendationPanel seed={recommendationSeed} active={mode === 'recommend'} onConsult={productId => { setSelectedId(productId); setMode('qa'); setMobileSources(false) }} onResetSources={() => { setRecommendationAnswer(undefined); setRecommendationSource(null) }} onSources={(candidate, requestId) => {
       setRecommendationAnswer({ productId: candidate.product.product_id, requestId, status: candidate.citations.length ? 'ANSWER' : 'INSUFFICIENT', answer: candidate.reasons.join('\n'), citations: candidate.citations })
       setRecommendationSource(candidate.citations[0]?.sourceId ?? null); setMobileSources(true)
     }} />

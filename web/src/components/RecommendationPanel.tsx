@@ -9,6 +9,7 @@ interface Props {
   onConsult: (productId: string) => void
   onSources: (candidate: Candidate, requestId: string) => void
   onResetSources: () => void
+  seed?: { message: string; criteria: RecommendationCriteria; id: string }
 }
 
 const initialCriteria: RecommendationCriteria = {
@@ -16,7 +17,7 @@ const initialCriteria: RecommendationCriteria = {
   needsLaptop: false, laptop: null, machineWashRequired: false, unsupportedRequirements: [],
 }
 
-export default function RecommendationPanel({ active, onConsult, onSources, onResetSources }: Props) {
+export default function RecommendationPanel({ active, onConsult, onSources, onResetSources, seed }: Props) {
   const [message, setMessage] = useState('')
   const [form, setForm] = useState({ min: '', max: '', minInclusive: true, maxInclusive: true, laptop: false, length: '', width: '', thickness: '', machineWash: false, unsupported: '' })
   const [busy, setBusy] = useState<'understand' | 'filter' | null>(null)
@@ -27,6 +28,13 @@ export default function RecommendationPanel({ active, onConsult, onSources, onRe
   const resultElement = useRef<HTMLDivElement>(null)
   const locked = useRef(false)
   useEffect(() => () => controller.current?.abort(), [])
+  useEffect(() => {
+    if (!seed) return
+    controller.current?.abort(); controller.current=null; locked.current=false; setBusy(null)
+    const c=seed.criteria
+    setMessage(seed.message); setRecognized(true); setResult(null); setError(null)
+    setForm({ min:c.minPriceCny?.toString()??'',max:c.maxPriceCny?.toString()??'',minInclusive:c.minPriceInclusive,maxInclusive:c.maxPriceInclusive,laptop:c.needsLaptop,length:c.laptop?.lengthCm.toString()??'',width:c.laptop?.widthCm.toString()??'',thickness:c.laptop?.thicknessCm.toString()??'',machineWash:c.machineWashRequired,unsupported:c.unsupportedRequirements.join('\n') })
+  }, [seed])
 
   function changeDescription(value: string) {
     setMessage(value); setRecognized(false); setResult(null); setError(null); onResetSources()
@@ -46,6 +54,7 @@ export default function RecommendationPanel({ active, onConsult, onSources, onRe
     try {
       if (kind === 'understand') {
         const criteria = await understandRequirement(message.trim(), request.signal)
+        if(request.signal.aborted) return
         setForm({
           min: criteria.minPriceCny?.toString() ?? '', max: criteria.maxPriceCny?.toString() ?? '',
           minInclusive: criteria.minPriceInclusive, maxInclusive: criteria.maxPriceInclusive,
@@ -64,6 +73,7 @@ export default function RecommendationPanel({ active, onConsult, onSources, onRe
           machineWashRequired: form.machineWash, unsupportedRequirements: form.unsupported.split('\n').map(s => s.trim()).filter(Boolean),
         }
         const response = await recommendProducts(criteria, request.signal)
+        if(request.signal.aborted) return
         setResult(response)
         requestAnimationFrame(() => resultElement.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }))
       }
@@ -71,7 +81,7 @@ export default function RecommendationPanel({ active, onConsult, onSources, onRe
       if (request.signal.aborted) return
       const detail = cause instanceof Error ? cause.message : '请求失败，请重试。'
       setError(detail + (cause instanceof ApiError && cause.code ? `（${cause.code}）` : ''))
-    } finally { locked.current = false; setBusy(null) }
+    } finally { if(controller.current===request) { locked.current = false; setBusy(null) } }
   }
 
   return <main className="chat-panel recommendation-panel" hidden={!active} aria-label="条件推荐">

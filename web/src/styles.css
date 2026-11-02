@@ -182,4 +182,4 @@ a { color: inherit; }
   .laptop-fields { padding: 11px; gap: 8px; }.laptop-fields label { font-size: 11px; }.laptop-fields input { padding: 10px 5px; }
   .requirement-action > span { font-size: 10px; max-width: 160px; line-height: 1.7; }.requirement-examples button { font-size: 10px; }
   .recommend-submit { width: 100%; }.candidate-card { padding: 15px; }.candidate-price { font-size: 20px; }.candidate-summary h4 { font-size: 15px; }
-}
+}.agent-toggle { display:flex; align-items:center; gap:6px; color:#597451; font-size:11px; cursor:pointer; }.agent-toggle input { accent-color:#176b52; }.agent-record { display:flex; flex-direction:column; gap:5px; font-size:11px; color:#6b8061; border-left:2px solid #dbe7d2; padding:8px 10px; background:#f8fbf4; margin:12px 0; overflow-wrap:anywhere; }.agent-review { margin:8px 0; }

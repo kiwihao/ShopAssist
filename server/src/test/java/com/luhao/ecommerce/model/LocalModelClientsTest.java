@@ -3,6 +3,7 @@ package com.luhao.ecommerce.model;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.luhao.ecommerce.model.infrastructure.ollama.OllamaEmbeddingClient;
 import com.luhao.ecommerce.model.infrastructure.deepseek.DeepSeekChatClient;
+import com.luhao.ecommerce.model.infrastructure.deepseek.DeepSeekToolCallingClient;
 import com.luhao.ecommerce.shared.error.ApiException;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
@@ -58,5 +59,16 @@ class LocalModelClientsTest {
         var client=new DeepSeekChatClient(RestClient.builder(),url,"test-key","deepseek-flash");
         assertThatThrownBy(()->client.complete("JSON","问题")).isInstanceOfSatisfying(ApiException.class,
                 e->assertThat(e.code()).isEqualTo("CHAT_HTTP_503"));
+    }
+    @Test void nativeToolCallsAndToolResultIdsUseTheActualHttpProtocol() throws Exception {
+        body=json.writeValueAsString(Map.of("choices",List.of(Map.of("message",Map.of("role","assistant","tool_calls",List.of(Map.of("id","call-1","type","function","function",Map.of("name","query_product_knowledge","arguments","{}"))))))));
+        var client=new DeepSeekToolCallingClient(RestClient.builder(),url,"test-key","deepseek-flash");
+        var messages=List.<Map<String,Object>>of(Map.of("role","tool","tool_call_id","previous-call","content","{\"status\":\"ANSWER\"}"));
+        var response=client.next(messages,List.of(Map.of("type","function","function",Map.of("name","query_product_knowledge"))));
+        assertThat(response.path("tool_calls").get(0).path("id").asText()).isEqualTo("call-1");
+        var sent=json.readTree(request);
+        assertThat(sent.path("messages").get(0).path("tool_call_id").asText()).isEqualTo("previous-call");
+        assertThat(sent.path("tools").get(0).path("function").path("name").asText()).isEqualTo("query_product_knowledge");
+        assertThat(sent.path("thinking").path("type").asText()).isEqualTo("disabled");
     }
 }

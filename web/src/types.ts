@@ -61,5 +61,18 @@ export interface Turn {
   question: string
   state: 'pending' | 'complete' | 'error'
   answer?: Answer
+  agent?: AgentResult
   error?: { message: string; code?: string; requestId?: string }
+}
+
+export interface AgentResult {
+  requestId: string
+  status: string
+  message: string
+  errorCode?: string
+  qa?: Answer
+  criteria?: RecommendationCriteria
+  toolCalls: number
+  maxToolCalls: number
+  trace: { tool: string; outcome: string; elapsedMs: number; callId: string }[]
 }
