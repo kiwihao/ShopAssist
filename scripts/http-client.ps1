@@ -6,6 +6,7 @@ function Invoke-DemoRequest {
         [Parameter(Mandatory=$true)][string]$Uri,
         [string]$Method = 'GET',
         [string]$Json,
+        [hashtable]$Headers,
         [hashtable]$Fields,
         [string]$FilePath
     )
@@ -16,6 +17,7 @@ function Invoke-DemoRequest {
     $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::new($Method), $Uri)
     $response = $null
     try {
+        if ($Headers) { foreach ($header in $Headers.GetEnumerator()) { $null = $request.Headers.TryAddWithoutValidation([string]$header.Key, [string]$header.Value) } }
         if ($FilePath) {
             $multipart = [System.Net.Http.MultipartFormDataContent]::new()
             $request.Content = $multipart
@@ -40,9 +42,10 @@ function Invoke-DemoRequest {
 }
 
 function Invoke-DemoJson {
-    param([string]$Uri, [string]$Method = 'GET', [string]$Json)
+    param([string]$Uri, [string]$Method = 'GET', [string]$Json, [hashtable]$Headers)
     $arguments = @{Uri=$Uri; Method=$Method}
     if ($PSBoundParameters.ContainsKey('Json')) { $arguments.Json = $Json }
+    if ($PSBoundParameters.ContainsKey('Headers')) { $arguments.Headers = $Headers }
     $result = Invoke-DemoRequest @arguments
     if ($result.StatusCode -lt 200 -or $result.StatusCode -ge 300) {
         throw "HTTP $($result.StatusCode): $($result.Content)"

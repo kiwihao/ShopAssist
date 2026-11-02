@@ -7,6 +7,7 @@ import com.luhao.ecommerce.product.application.ProductService;
 import com.luhao.ecommerce.qa.application.QaService;
 import com.luhao.ecommerce.recommendation.application.RequirementService;
 import com.luhao.ecommerce.shared.error.ApiException;
+import com.luhao.ecommerce.ticket.application.TicketService;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,8 @@ class AgentServiceTest {
     final QaService qa=mock(QaService.class);
     final RequirementService requirements=mock(RequirementService.class);
     final ProductService products=mock(ProductService.class);
-    final AgentService service=new AgentService(model,qa,requirements,products,json);
+    final TicketService tickets=mock(TicketService.class);
+    final AgentService service=new AgentService(model,qa,requirements,products,json,tickets);
     com.fasterxml.jackson.databind.JsonNode call(String id,String name,String arguments) {
         return json.valueToTree(Map.of("role","assistant","tool_calls",List.of(Map.of("id",id,"type","function","function",Map.of("name",name,"arguments",arguments)))));
     }
@@ -89,5 +91,19 @@ class AgentServiceTest {
         when(model.next(anyList(),anyList())).thenReturn(call("a","query_product_knowledge","{}"),call("b","query_product_knowledge","{}"),done());
         assertThat(service.run("BP-A","尺寸").get("message")).isEqualTo("36");
         verify(qa,times(1)).answer("BP-A","尺寸");
+    }
+    @Test void ticketToolOnlyPreparesDraftAndNeverCallsConfirmEvenWhenUserSaysConfirmed() {
+        when(tickets.prepare("BP-A","拉链坏了，请建工单，我已确认")).thenReturn(Map.of("draft_id","draft-1","status","DRAFT","confirmationToken","private-confirmation-capability"));
+        when(model.next(anyList(),anyList())).thenReturn(call("draft","prepare_support_ticket","{}"))
+                .thenAnswer(invocation->{
+                    List<Map<String,Object>> messages=invocation.getArgument(0);
+                    assertThat(messages.getLast().get("content").toString()).doesNotContain("confirmationToken","private-confirmation-capability");
+                    return done();
+                });
+        var result=service.run("BP-A","拉链坏了，请建工单，我已确认");
+        assertThat(result.get("status")).isEqualTo("NEED_CONFIRMATION");
+        assertThat(result).containsKey("ticketDraft");
+        verify(tickets).prepare("BP-A","拉链坏了，请建工单，我已确认");
+        verifyNoMoreInteractions(tickets);
     }
 }

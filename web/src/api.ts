@@ -1,4 +1,4 @@
-import type { AgentResult, Answer, Product, RecommendationCriteria, RecommendationResult } from './types'
+import type { AgentResult, Answer, Product, RecommendationCriteria, RecommendationResult, TicketDraft, SupportTicket } from './types'
 
 export class ApiError extends Error {
   code?: string
@@ -77,4 +77,14 @@ export async function askAgent(productId: string, message: string, signal: Abort
   if (typeof data.message !== 'string' || !Array.isArray(data.trace)) throw new ApiError('客服编排结果格式异常。', 'INVALID_AGENT_RESPONSE')
   if (data.status === 'TOOL_ERROR' || data.status === 'LIMIT_REACHED') throw new ApiError(data.message, data.errorCode || data.status, data.requestId)
   return data
+}
+
+export async function editTicketDraft(draft: TicketDraft, summary: string): Promise<TicketDraft> {
+  return await request(`/api/ticket-drafts/${draft.draft_id}`, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:draft.version,confirmationToken:draft.confirmationToken,summary})}) as TicketDraft
+}
+export async function confirmTicketDraft(draft: TicketDraft, key: string): Promise<SupportTicket> {
+  return await request(`/api/ticket-drafts/${draft.draft_id}/confirm`,{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify({version:draft.version,confirmationToken:draft.confirmationToken,confirmed:true})}) as SupportTicket
+}
+export async function cancelTicketDraft(draft: TicketDraft): Promise<void> {
+  await request(`/api/ticket-drafts/${draft.draft_id}/cancel`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({version:draft.version,confirmationToken:draft.confirmationToken})})
 }

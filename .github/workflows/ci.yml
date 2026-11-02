@@ -35,3 +35,31 @@ jobs:
         working-directory: web
       - run: npm run build
         working-directory: web
+  ticket-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.2-pg17
+        env:
+          POSTGRES_USER: demo
+          POSTGRES_PASSWORD: local_demo_only
+          POSTGRES_DB: ecommerce_rag_ticket_test
+        ports: ['55432:5432']
+        options: >-
+          --health-cmd "pg_isready -U demo -d ecommerce_rag_ticket_test"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: server/pom.xml
+      - name: Test ticket confirmation and concurrent idempotency
+        working-directory: server
+        env:
+          DEMO_INTEGRATION_TESTS: 'true'
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -Dtest=TicketIntegrationTest test

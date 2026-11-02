@@ -72,7 +72,29 @@ export interface AgentResult {
   errorCode?: string
   qa?: Answer
   criteria?: RecommendationCriteria
+  ticketDraft?: TicketDraft
+  ticket?: SupportTicket
+  draftCancelled?: boolean
   toolCalls: number
   maxToolCalls: number
   trace: { tool: string; outcome: string; elapsedMs: number; callId: string }[]
+}
+
+export interface TicketDraft {
+  draft_id: string
+  product_id: string
+  summary: string
+  version: number
+  status: 'DRAFT'
+  expires_at: string
+  confirmationToken: string
+  notice: string
+}
+export interface SupportTicket {
+  ticket_id: string
+  ticket_number: string
+  product_id: string
+  summary: string
+  status: 'OPEN'
+  replayed: boolean
 }

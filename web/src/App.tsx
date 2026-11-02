@@ -4,7 +4,8 @@ import { ApiError, askAgent, askProduct, getProducts } from './api'
 import Backpack from './components/Backpack'
 import SourcePanel from './components/SourcePanel'
 import RecommendationPanel from './components/RecommendationPanel'
-import type { Answer, Product, RecommendationCriteria, Turn } from './types'
+import TicketDraftCard from './components/TicketDraftCard'
+import type { AgentResult, Answer, Product, RecommendationCriteria, Turn } from './types'
 
 const suggestions = [
   { icon: Package, title: '电脑能放下吗？', detail: '先了解电脑仓尺寸', question: '这款背包的电脑仓尺寸是多少？' },
@@ -134,6 +135,9 @@ export default function App() {
     setSourceSelections(previous => ({ ...previous, [selectedId]: { turnId, sourceId } }))
     setMobileSources(true)
   }
+  const updateTicket = (productId: string, turnId: string, patch: Partial<AgentResult>) => {
+    setHistories(previous=>({...previous,[productId]:(previous[productId]??[]).map(turn=>turn.id===turnId && turn.agent ? {...turn,agent:{...turn.agent,...patch},answer:turn.answer && patch.message ? {...turn.answer,answer:patch.message}:turn.answer}:turn)}))
+  }
 
   return <div className="app-shell">
     <a className="skip-link" href={mode === 'qa' ? '#question-input' : '#requirement-description'}>跳到提问框</a>
@@ -173,9 +177,10 @@ export default function App() {
             <div className="user-message"><span className="user-bubble">{turn.question}</span><span className="user-avatar">我</span></div>
             <div className="assistant-message"><BrandMark small /><div className="assistant-content"><div className="assistant-name">ShopAssist<span>商品助手</span></div>
               {turn.state === 'pending' ? <div className="thinking" role="status"><span className="thinking-dots"><i /><i /><i /></span>正在查阅商品资料并整理回答…</div> : turn.state === 'error' ? <div className="answer-error" role="alert"><CircleAlert size={19} /><div><strong>这次没能获取回答</strong><p>{turn.error?.message}</p><div className="error-details">{turn.error?.code}{turn.error?.requestId && <span>请求编号：{turn.error.requestId}</span>}</div><button className="text-action" disabled={busy} onClick={() => void send(turn.question, turn.id)}><RefreshCw size={14} />重新获取回答</button></div></div> : turn.answer && <>
-                <span className={`answer-status ${turn.answer.status.toLowerCase()}`}>{turn.answer.status === 'ANSWER' ? <BookOpen size={13} /> : <CircleAlert size={13} />}{turn.agent?.status === 'NEED_CONFIRMATION' ? '待核对推荐条件' : turn.agent?.status === 'UNSUPPORTED' ? '当前能力范围' : turn.answer.status === 'ANSWER' ? '来自商品资料' : turn.answer.status === 'NEED_INFO' ? '需要补充信息' : '资料暂未说明'}</span>
+                <span className={`answer-status ${turn.answer.status.toLowerCase()}`}>{turn.answer.status === 'ANSWER' ? <BookOpen size={13} /> : <CircleAlert size={13} />}{turn.agent?.ticket ? '咨询工单已创建' : turn.agent?.draftCancelled ? '草稿已取消' : turn.agent?.ticketDraft ? '待确认工单草稿' : turn.agent?.status === 'NEED_CONFIRMATION' ? '待核对推荐条件' : turn.agent?.status === 'UNSUPPORTED' ? '当前能力范围' : turn.answer.status === 'ANSWER' ? '来自商品资料' : turn.answer.status === 'NEED_INFO' ? '需要补充信息' : '资料暂未说明'}</span>
                 <p className="answer-text">{turn.answer.answer}</p>
-                {turn.agent && <div className="agent-record"><span>工具调用 {turn.agent.toolCalls}/{turn.agent.maxToolCalls}</span>{turn.agent.trace.map(step=><span key={step.callId}>{step.tool==='query_product_knowledge'?'商品知识问答':step.tool==='prepare_recommendation'?'准备推荐条件':step.tool} · {step.outcome} · {step.elapsedMs} ms</span>)}</div>}
+                {turn.agent?.ticketDraft && <TicketDraftCard initial={turn.agent.ticketDraft} savedTicket={turn.agent.ticket} savedCancelled={turn.agent.draftCancelled} onDraft={ticketDraft=>updateTicket(selectedId,turn.id,{ticketDraft})} onCreated={ticket=>updateTicket(selectedId,turn.id,{ticket,status:'TICKET_CREATED',message:'咨询工单已创建，可查看下方编号与登记内容。'})} onCancelled={()=>updateTicket(selectedId,turn.id,{draftCancelled:true,status:'DRAFT_CANCELLED',message:'草稿已取消，未创建正式工单。'})} />}
+                {turn.agent && <div className="agent-record"><span>工具调用 {turn.agent.toolCalls}/{turn.agent.maxToolCalls}</span>{turn.agent.trace.map(step=><span key={step.callId}>{step.tool==='query_product_knowledge'?'商品知识问答':step.tool==='prepare_recommendation'?'准备推荐条件':step.tool==='prepare_support_ticket'?'准备咨询工单草稿':step.tool} · {step.outcome} · {step.elapsedMs} ms</span>)}</div>}
                 {turn.agent?.criteria && <button className="outline-button agent-review" disabled={busy} onClick={()=>{ setRecommendationSeed({message:turn.question,criteria:turn.agent!.criteria!,id:crypto.randomUUID()});setMode('recommend');setMobileSources(false) }}>核对推荐条件<ArrowRight size={14} /></button>}
                 {turn.answer.citations.length > 0 && <div className="citation-row"><span>查看依据</span>{turn.answer.citations.map(source => <button key={source.sourceId} className={`citation-chip ${selectedSource?.turnId === turn.id && activeSource === source.sourceId ? 'active' : ''}`} onClick={() => selectCitation(turn.id, source.sourceId)}><FileText size={13} /><span>{source.heading.split(' / ').at(-1)}</span><span className="citation-id">{source.sourceId}</span><ChevronRight size={12} /></button>)}</div>}
                 <div className="answer-actions"><CopyButton text={turn.answer.answer} /><span className="request-id" title={turn.answer.requestId}>请求 {turn.answer.requestId.slice(0, 8)}</span></div>
