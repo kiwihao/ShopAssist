@@ -1,0 +1,4 @@
+{"id":"a-size","product_id":"BP-A","question":"电脑仓尺寸是多少？","expected_heading":"尺寸与电脑收纳"}
+{"id":"b-size","product_id":"BP-B","question":"这款包的电脑仓有多大？","expected_heading":"尺寸与电脑收纳"}
+{"id":"a-clean","product_id":"BP-A","question":"背包应该怎么清洁？","expected_heading":"清洁与保养"}
+{"id":"b-clean","product_id":"BP-B","question":"这款包可以手洗吗？","expected_heading":"清洁与保养"}

@@ -122,7 +122,7 @@ infra/        数据库初始化
 scripts/      启动与接口验证
 data/demo/    虚拟商品及说明资料
 docs/         架构、接口、阶段验收与排错记录
-evaluation/   Python 评测规划，尚未实现
+evaluation/   Python 固定题检索检查（初步基线）
 ```
 
 - [架构与目录](docs/03-整体架构与目录约定.md)
@@ -133,9 +133,10 @@ evaluation/   Python 评测规划，尚未实现
 - [最小 Agent 循环与验收](docs/14-最小Agent工具循环.md)
 - [咨询工单确认与幂等验收](docs/15-咨询工单确认与幂等验收.md)
 - [推荐点选交互验收](docs/16-推荐点选交互验收.md)
+- [Python 检索检查](evaluation/README.md)
 
 ## 当前边界
 
-当前为本地单用户演示，数据均为虚拟资料。页面历史仅存于内存，不等于后端多轮记忆或用户隔离。尚未实现混合检索、Rerank、正式效果评测、长期记忆、MCP、Skills、LangGraph、人工工单处理后台、支付或退款。
+当前为本地单用户演示，数据均为虚拟资料。页面历史仅存于内存，不等于后端多轮记忆或用户隔离。Python 已有小规模固定题检索检查；尚未完成系统性效果评测、混合检索、Rerank、长期记忆、MCP、Skills、LangGraph、人工工单处理后台、支付或退款。
 
 源码与架构学习参考 [Ragent](https://github.com/nageoffer/ragent)，固定参考提交记录于[环境核对](docs/01-环境核对.md)。本仓库为独立精简实现，未宣称参考项目的能力均已完成。历史文档中的计划和阶段记录不作为当前功能完成证明。
